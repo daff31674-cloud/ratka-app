@@ -1,40 +1,11 @@
-name: Build Apps
-
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main ]
-
-jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install pyinstaller pillow
-      - run: pyinstaller --onefile --add-data "config.json;." pc_client.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-client
-          path: dist/pc_client.exe
-
-  build-android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: sudo apt-get update && sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev lld clang
-      - run: pip install --upgrade pip cython buildozer
-      - run: cp android_controller.py main.py
-      - run: buildozer init
-      - run: sed -i 's/title = My Application/title = RatkaController/' buildozer.spec
-      - run: sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
-      - run: buildozer android debug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: android-controller-apk
-          path: bin/*.apk
+- run: |
+          sed -i 's/title = My Application/title = RatkaController/' buildozer.spec
+          sed -i 's/package.name = myapp/package.name = ratkacontroller/' buildozer.spec
+          sed -i 's/package.domain = org.test/package.domain = org.ratka/' buildozer.spec
+          sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
+          sed -i 's/requirements = python3,kivy/requirements = python3,kivy,requests,urllib3,certifi,charset-normalizer,idna/' buildozer.spec
+          sed -i 's/#android.api =/android.api = 33/' buildozer.spec
+          sed -i 's/#android.minapi =/android.minapi = 21/' buildozer.spec
+          sed -i 's/#android.ndk =/android.ndk = 25b/' buildozer.spec
+          echo "android.build_tools_version = 33.0.2" >> buildozer.spec
+      - run: yes | buildozer android debug
