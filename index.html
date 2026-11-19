@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ratka Panel</title>
+  <style>
+    body { font-family: sans-serif; background: #121212; color: #fff; padding: 16px; }
+    input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; }
+    button { background: #2563eb; color: #fff; font-weight: bold; }
+    pre { background: #1e1e1e; padding: 12px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h2>Ratka Controller</h2>
+  <input id="cmd" placeholder="Команда (например: msg Привет или dir)" />
+  <button onclick="sendCmd()">Отправить</button>
+  <button onclick="loadState()">Обновить данные</button>
+  <pre id="out">Готово</pre>
+
+  <script>
+    const DB_URL = "https://ratka-777f3-default-rtdb.firebaseio.com";
+
+    async function sendCmd() {
+      const cmd = document.getElementById("cmd").value.trim();
+      if (!cmd) return;
+      await fetch(`${DB_URL}/command.json`, {
+        method: "PUT",
+        body: JSON.stringify({ text: cmd, time: Date.now() })
+      });
+      document.getElementById("cmd").value = "";
+      loadState();
+    }
+
+    async function loadState() {
+      const res = await fetch(`${DB_URL}/.json`);
+      const data = await res.json();
+      document.getElementById("out").textContent = JSON.stringify(data, null, 2);
+    }
+
+    loadState();
+  </script>
+</body>
+</html>
