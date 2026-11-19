@@ -23,33 +23,132 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Cordova and Build APK
+      - name: Build APK
         run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null 2>&1 || true
-          npm install -g cordova
-          cordova create build_app com.ratka.app Ratka
-          rm -rf build_app/www/*
-          cp index.html build_app/www/
-          cp config.json build_app/www/ 2>/dev/null || true
-          cd build_app
-          cordova platform add android@12
-          node -e '
-            const fs = require("fs");
-            const p = "platforms/android/build.gradle";
-            let s = fs.readFileSync(p, "utf8");
-            s = s.replace(/repositories\s*\{/g, "repositories {\n        mavenCentral()");
-            fs.writeFileSync(p, s);
-          '
-          cordova build android
+          mkdir -p apk_proj/app/src/main/java/com/ratka/app
+          mkdir -p apk_proj/app/src/main/res/layout
+          mkdir -p apk_proj/app/src/main/res/values
+          mkdir -p apk_proj/app/src/main/assets
+
+          cp index.html apk_proj/app/src/main/assets/ 2>/dev/null || echo "<h1>Ratka</h1>" > apk_proj/app/src/main/assets/index.html
+          cp config.json apk_proj/app/src/main/assets/ 2>/dev/null || true
+
+          cat << 'EOF' > apk_proj/settings.gradle
+          rootProject.name = "Ratka"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > apk_proj/build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.5.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+
+          cat << 'EOF' > apk_proj/app/build.gradle
+          apply plugin: 'com.android.application'
+
+          android {
+              namespace "com.ratka.app"
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.ratka.app"
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.webkit:webkit:1.10.0'
+          }
+          EOF
+
+          cat << 'EOF' > apk_proj/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:label="Ratka"
+                  android:usesCleartextTraffic="true"
+                  android:hardwareAccelerated="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > apk_proj/app/src/main/res/values/styles.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar" />
+          </resources>
+          EOF
+
+          cat << 'EOF' > apk_proj/app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <WebView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/webview"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent" />
+          EOF
+
+          cat << 'EOF' > apk_proj/app/src/main/java/com/ratka/app/MainActivity.java
+          package com.ratka.app;
+
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.appcompat.app.AppCompatActivity;
+
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+                  WebView webView = findViewById(R.id.webview);
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  webView.setWebViewClient(new WebViewClient());
+                  webView.loadUrl("file:///android_asset/index.html");
+              }
+          }
+          EOF
+
+          cd apk_proj
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ratka-debug-apk
-          path: build_app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
-        
+          path: apk_proj/app/build/outputs/apk/debug/app-debug.apk
