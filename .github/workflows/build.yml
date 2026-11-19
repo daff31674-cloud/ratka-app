@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -70,17 +70,6 @@ jobs:
                   versionCode 1
                   versionName "1.0"
               }
-
-              buildTypes {
-                  debug {
-                      signingConfig signingConfigs.debug
-                  }
-              }
-          }
-
-          dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.webkit:webkit:1.10.0'
           }
           EOF
 
@@ -108,7 +97,7 @@ jobs:
           cat << 'EOF' > apk_proj/app/src/main/res/values/styles.xml
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar" />
+              <style name="AppTheme" parent="android:Theme.DeviceDefault.NoActionBar" />
           </resources>
           EOF
 
@@ -123,13 +112,13 @@ jobs:
           cat << 'EOF' > apk_proj/app/src/main/java/com/ratka/app/MainActivity.java
           package com.ratka.app;
 
+          import android.app.Activity;
           import android.os.Bundle;
           import android.webkit.WebSettings;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
-          import androidx.appcompat.app.AppCompatActivity;
 
-          public class MainActivity extends AppCompatActivity {
+          public class MainActivity extends Activity {
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -145,7 +134,7 @@ jobs:
           EOF
 
           cd apk_proj
-          gradle assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
