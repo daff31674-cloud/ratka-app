@@ -37,7 +37,14 @@ jobs:
           cp index.html build_app/www/
           cp config.json build_app/www/ 2>/dev/null || true
           cd build_app
-          cordova platform add android
+          cordova platform add android@12
+          node -e '
+            const fs = require("fs");
+            const p = "platforms/android/build.gradle";
+            let s = fs.readFileSync(p, "utf8");
+            s = s.replace(/repositories\s*\{/g, "repositories {\n        mavenCentral()");
+            fs.writeFileSync(p, s);
+          '
           cordova build android
 
       - name: Upload APK
@@ -45,3 +52,4 @@ jobs:
         with:
           name: ratka-debug-apk
           path: build_app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+        
